@@ -14,6 +14,7 @@ import io.ktor.routing.*
 import io.ktor.http.*
 import io.ktor.auth.*
 import io.ktor.client.features.logging.*
+import io.ktor.features.*
 import ru.arrow.freesound.analyze.SoundAnalyze
 import java.lang.Exception
 
@@ -38,14 +39,6 @@ fun Application.module(testing: Boolean = false) {
         with(soundAnalyze) {
             mfccCsvData(loadDescriptors("99226"))
         }
-//        val message = client.get<SoundDescriptorDto> {
-//            headers {
-//                append(HttpHeaders.Authorization, "Token qHknUMZmyYm2Q2SPOBflRKtly4p2NxPE5i57RIu0")
-//            }
-//            url("https://freesound.org/apiv2/sounds/99226/?descriptors=lowlevel.mfcc")
-//            contentType(ContentType.Application.Json)
-//        }
-//        println("response" + message.analysis.lowlevel.mfcc.dmean)
     }
 
     install(Authentication) {
@@ -54,12 +47,15 @@ fun Application.module(testing: Boolean = false) {
             validate { if (it.name == "test" && it.password == "password") UserIdPrincipal(it.name) else null }
         }
     }
+    install(ContentNegotiation)
 
     routing {
         get("/") {
             call.respondText("HELLO WORLD!", contentType = ContentType.Text.Plain)
         }
-
+        get("/auth") {
+            call.respondText("Введите email", contentType = ContentType.Text.Plain)
+        }
         authenticate("myBasicAuth") {
             get("/protected/route/basic") {
                 val principal = call.principal<UserIdPrincipal>()!!

@@ -67,4 +67,9 @@ dependencies {
     implementation "io.arrow-kt:arrow-optics:$arrow_version"
     implementation "io.arrow-kt:arrow-fx-coroutines:$arrow_version"
     kapt    "io.arrow-kt:arrow-meta:$arrow_version"
+
+    compile group: 'com.rethinkdb', name: 'rethinkdb-driver', version: '2.4.4'
+
+
+
 }
