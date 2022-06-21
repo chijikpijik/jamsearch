@@ -1,7 +1,8 @@
-package ru.arrow.freesound.analyze
+package freesound.analyze
 
 import data.freesound.SoundDescriptorDto
 import io.ktor.client.*
+import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import java.io.File
@@ -31,13 +32,13 @@ class SoundAnalyze(val client: HttpClient) {
     }
 
     suspend fun loadDescriptors(id: String) : SoundDescriptorDto {
-        val message = client.get<SoundDescriptorDto> {
+        val message = client.get {
             headers {
                 append(HttpHeaders.Authorization, "Token qHknUMZmyYm2Q2SPOBflRKtly4p2NxPE5i57RIu0")
             }
             url("https://freesound.org/apiv2/sounds/$id/?descriptors=lowlevel.mfcc")
             contentType(ContentType.Application.Json)
-        }
+        }.body<SoundDescriptorDto>()
         return message
     }
 

@@ -1,75 +1,131 @@
-buildscript {
-    repositories {
-        mavenCentral()
-    }
-    
-    dependencies {
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-    }
+plugins {
+    id 'org.jetbrains.kotlin.multiplatform' version '1.6.10'
+    id 'org.jetbrains.kotlin.plugin.serialization' version '1.6.10'
+    id 'application'
 }
 
-allprojects {
-    repositories {
-        mavenCentral()
-    }
-}
 
-apply plugin: 'kotlin'
-apply plugin: 'kotlin-kapt'
-apply plugin: 'application'
+group = 'me.user'
+version = '1.0-SNAPSHOT'
 
-group 'ru.arrow'
-version '0.0.1-SNAPSHOT'
-def arrow_version = "0.13.2"
-
-mainClassName = "io.ktor.server.cio.EngineMain"
-
-sourceSets {
-    main.kotlin.srcDirs = main.java.srcDirs = ['src']
-    test.kotlin.srcDirs = test.java.srcDirs = ['test']
-    main.resources.srcDirs = ['resources']
-    test.resources.srcDirs = ['testresources']
-}
+apply plugin: 'kotlin-kapt' //TODO: this is an old way, find id
 
 repositories {
-    mavenLocal()
+    jcenter()
     mavenCentral()
+    maven { url 'https://dl.bintray.com/kotlin/kotlin-js-wrappers' }
+    maven { url 'https://dl.bintray.com/kotlin/kotlinx' }
+    maven { url 'https://dl.bintray.com/kotlin/ktor' }
+    maven { url "https://maven.pkg.jetbrains.space/public/p/kotlinx-html/maven" }
 }
-compileKotlin {
-    sourceCompatibility = JavaVersion.VERSION_1_8
-    targetCompatibility = JavaVersion.VERSION_1_8
 
-    kotlinOptions {
-        jvmTarget = "1.8"
+kotlin {
+    jvm {
+        compilations.all {
+            kotlinOptions.jvmTarget = '1.8'
+        }
+        testRuns["test"].executionTask.configure {
+            useJUnit()
+        }
+        withJava()
     }
-}
-compileTestKotlin {
-    kotlinOptions {
-        jvmTarget = "1.8"
+    js(LEGACY) {
+        useCommonJs()
+        browser {
+            binaries.executable()
+            webpackTask {
+                cssSupport.enabled = true
+            }
+            runTask {
+                cssSupport.enabled = true
+            }
+            testTask {
+                useKarma {
+                    useChromeHeadless()
+                    webpackConfig.cssSupport.enabled = true
+                }
+            }
+        }
+    }
+    sourceSets {
+        commonMain {
+            dependencies {
+                implementation(libs.serialization.json)
+                implementation(libs.coroutines.core)
+                implementation(libs.ktor.client.core)
+                implementation(libs.ktor.client.serialization)
+                implementation(libs.ktor.client.json)
+                implementation(libs.ktor.client.logging)
+                implementation(libs.napier)
+
+            }
+        }
+        commonTest {
+            dependencies {
+                implementation kotlin('test-common')
+                implementation kotlin('test-annotations-common')
+            }
+        }
+        jvmMain {
+            dependencies {
+                implementation(libs.ktor.client.gson)
+                implementation(libs.ktor.server.netty)
+                implementation(libs.ktor.server.html.builder)
+                implementation(libs.ktor.client.cio)
+                implementation(libs.ktor.client.logging)
+                implementation(libs.ktor.server.content.negotiation)
+                implementation(libs.ktor.server.core)
+                implementation(libs.kotlinx.html.jvm)
+            }
+        }
+        jvmTest {
+            dependencies {
+                implementation kotlin('test-junit')
+            }
+        }
+        jsMain {
+            dependencies {
+                implementation(libs.kotlin.styled)
+                implementation("com.ccfraser.muirwik:muirwik-components:0.10.1")
+                        {
+                    exclude group: 'org.jetbrains', module: 'kotlin-css-js'
+                }
+                implementation(libs.kotlin.react)
+                implementation(libs.kotlin.react.dom)
+                implementation(libs.kotlin.react.router.dom)
+                implementation(libs.kotlin.react.mui)
+           }
+        }
+        jsTest {
+            dependencies {
+                implementation kotlin('test-js')
+            }
+        }
     }
 }
 
 dependencies {
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
-    implementation "io.ktor:ktor-server-cio:$ktor_version"
-    implementation "ch.qos.logback:logback-classic:$logback_version"
-    implementation "io.ktor:ktor-client-core:$ktor_version"
-    implementation "io.ktor:ktor-client-core-jvm:$ktor_version"
-    implementation "io.ktor:ktor-client-cio:$ktor_version"
-    implementation "io.ktor:ktor-client-json-jvm:$ktor_version"
-    implementation "io.ktor:ktor-client-gson:$ktor_version"
-    implementation "io.ktor:ktor-server-core:$ktor_version"
-    implementation "io.ktor:ktor-auth:$ktor_version"
-    implementation "io.ktor:ktor-client-logging:$ktor_version"
-    testImplementation "io.ktor:ktor-server-tests:$ktor_version"
-
+    kapt  "io.arrow-kt:arrow-meta:$arrow_version"
     implementation "io.arrow-kt:arrow-core:$arrow_version"
     implementation "io.arrow-kt:arrow-optics:$arrow_version"
     implementation "io.arrow-kt:arrow-fx-coroutines:$arrow_version"
-    kapt    "io.arrow-kt:arrow-meta:$arrow_version"
+}
 
-    compile group: 'com.rethinkdb', name: 'rethinkdb-driver', version: '2.4.4'
+application {
+    mainClassName = 'ServerKt'
+}
 
+tasks.getByName('jsBrowserProductionWebpack') {
+    outputFileName = 'output.js'
+}
 
+tasks.getByName('jvmJar') {
+    dependsOn(tasks.getByName('jsBrowserProductionWebpack'))
+    def jsBrowserProductionWebpack = tasks.getByName('jsBrowserProductionWebpack')
+    from(new File(jsBrowserProductionWebpack.destinationDirectory, jsBrowserProductionWebpack.outputFileName))
+}
 
+tasks.getByName('run') {
+    dependsOn(tasks.getByName('jvmJar'))
+    classpath(tasks.getByName('jvmJar'))
 }
